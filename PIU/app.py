@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QPushButton,
                              QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontDatabase
-
+from game_widget import GameWidget
 
 class SpaceInvadersMenu(QMainWindow):
     def __init__(self):
@@ -359,19 +359,9 @@ class SpaceInvadersMenu(QMainWindow):
         self.clear_layout()
         self.current_screen = "game"
 
-
-        game_screen = QLabel("GAME STARTING...\n\n🚀\n\nGame will load here!")
-        game_screen.setStyleSheet(f"""
-            color: #00ff00;
-            font-size: 32px;
-            font-family: '{self.retro_font_name}';
-            font-weight: bold;
-        """)
-        game_screen.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.main_layout.addWidget(game_screen)
-        print("Starting game...")
-        print(f"Sound: {self.sound_volume}%, Music: {self.music_volume}%")
+        game = GameWidget()
+        self.main_layout.addWidget(game)
+        game.setFocus()
 
 
 def main():
