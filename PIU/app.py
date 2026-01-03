@@ -1,25 +1,38 @@
 import sys
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QPushButton,
-                             QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QPushButton,
+    QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider
+)
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QFont, QFontDatabase, QShortcut, QKeySequence
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from pathlib import Path
+
 from game_widget import GameWidget
 
+
 class SpaceInvadersMenu(QMainWindow):
-    def __init__(self):
+
+    def __init__(self, open_options_callback=None):
         super().__init__()
+        self.open_options_callback = open_options_callback
+
         self.current_screen = "menu"
+        self.options_from_game = False  
+
         self.sound_volume = 50
         self.music_volume = 50
+
         self.setup_fonts()
         self.init_ui()
 
+        self.music_player = None
+        self.music_playlist = None
+
+
+        self.options_o_shortcut = None
+
     def setup_fonts(self):
-
-
-        from pathlib import Path
-
-
         jackpot_path = Path(r"D:\Downloads\master_droid\Master Droid.ttf")
         if jackpot_path.exists():
             jackpot_id = QFontDatabase.addApplicationFont(str(jackpot_path))
@@ -33,7 +46,6 @@ class SpaceInvadersMenu(QMainWindow):
         else:
             print(" Font Jackpot.ttf nu a fost găsit!")
             self.jackpot_font_name = "Courier New"
-
 
         arcade_path = Path(r"D:\Downloads\arcade_quest\Arcade Quest.ttf")
         if arcade_path.exists():
@@ -50,7 +62,6 @@ class SpaceInvadersMenu(QMainWindow):
             self.retro_font_name = "Courier New"
 
     def init_ui(self):
-
         self.setWindowTitle("Space Invaders")
         self.setFixedSize(800, 600)
         self.setStyleSheet("""
@@ -64,31 +75,34 @@ class SpaceInvadersMenu(QMainWindow):
                    }
                """)
 
-
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
         self.central_widget.setLayout(self.main_layout)
 
-
         self.show_main_menu()
 
-    def clear_layout(self):
 
+    def clear_layout(self, keep_game_widget=False):
         while self.main_layout.count():
             child = self.main_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+            w = child.widget()
+            if not w:
+                continue
+
+            if keep_game_widget and hasattr(self, "game_widget") and w is self.game_widget:
+
+                w.setParent(None)
+            else:
+                w.deleteLater()
 
     def show_main_menu(self):
-
-        self.clear_layout()
+        self.clear_layout(keep_game_widget=False)
         self.current_screen = "menu"
-
+        self.options_from_game = False
 
         menu_container = QWidget()
         menu_layout = QVBoxLayout()
@@ -96,27 +110,21 @@ class SpaceInvadersMenu(QMainWindow):
         menu_layout.setSpacing(30)
         menu_container.setLayout(menu_layout)
 
-
-
-
-
         subtitle = QLabel("SPACE<br>INVADERS")
         subtitle_font = QFont(self.jackpot_font_name)
         subtitle_font.setPointSize(30)
         subtitle.setFont(subtitle_font)
-
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("""
             color: #C309EF;
             margin-top: px;
             padding: 0px ;
         """)
-        subtitle.setTextFormat(Qt.TextFormat.RichText)  # 🔥 Important!
+        subtitle.setTextFormat(Qt.TextFormat.RichText)
         subtitle.setMinimumHeight(20)
         menu_layout.addWidget(subtitle)
 
         menu_layout.addSpacing(10)
-
 
         button_style = f"""
             QPushButton {{
@@ -141,7 +149,6 @@ class SpaceInvadersMenu(QMainWindow):
             }}
         """
 
-
         btn_start = QPushButton("▶ START")
         btn_start.setStyleSheet(button_style)
         btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -151,7 +158,7 @@ class SpaceInvadersMenu(QMainWindow):
         btn_options = QPushButton("⚙ OPTIONS")
         btn_options.setStyleSheet(button_style)
         btn_options.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_options.clicked.connect(self.show_options)
+        btn_options.clicked.connect(lambda: self.show_options("menu"))
         menu_layout.addWidget(btn_options, alignment=Qt.AlignmentFlag.AlignCenter)
 
         btn_exit = QPushButton("❌ EXIT")
@@ -161,7 +168,6 @@ class SpaceInvadersMenu(QMainWindow):
         menu_layout.addWidget(btn_exit, alignment=Qt.AlignmentFlag.AlignCenter)
 
         menu_layout.addStretch()
-
 
         footer = QLabel("Space Invaders | © 2025")
         footer.setStyleSheet(f"""
@@ -175,32 +181,30 @@ class SpaceInvadersMenu(QMainWindow):
 
         self.main_layout.addWidget(menu_container)
 
-    def show_options(self):
+    def show_options(self, source="menu"):
 
-        self.clear_layout()
+        self.options_from_game = (source == "game")
+
+
+        self.clear_layout(keep_game_widget=self.options_from_game)
         self.current_screen = "options"
-
 
         options_container = QWidget()
         options_layout = QVBoxLayout()
         options_layout.setContentsMargins(50, 30, 50, 30)
-        options_layout.setSpacing(20)
         options_container.setLayout(options_layout)
-
 
         title = QLabel("⚙ OPTIONS")
         title.setStyleSheet(f"""
             color: #00ff00;
-            font-size: 48px;
-            font-weight: bold;
-            font-family: '{self.retro_font_name}';
-            padding: 20px;
+            font-size: 10px;
+            font-weight: thin;
+            padding: 10px;
         """)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         options_layout.addWidget(title)
 
-        options_layout.addSpacing(30)
-
+        options_layout.addSpacing(-30)
 
         settings_frame = QFrame()
         settings_frame.setStyleSheet("""
@@ -212,10 +216,11 @@ class SpaceInvadersMenu(QMainWindow):
             }
         """)
         settings_layout = QVBoxLayout()
-        settings_layout.setSpacing(40)
+        settings_layout.setContentsMargins(10, 20, 10, 10)
+        settings_layout.setSpacing(20)
         settings_frame.setLayout(settings_layout)
 
-
+        # --- SOUND ---
         sound_label = QLabel("🔊 SOUND EFFECTS")
         sound_label.setStyleSheet(f"""
             color: #00ff00;
@@ -266,7 +271,7 @@ class SpaceInvadersMenu(QMainWindow):
         settings_layout.addLayout(sound_slider_layout)
 
         # --- MUSIC ---
-        music_label = QLabel("🎵 MUSIC")
+        music_label = QLabel("MUSIC VOLUME")
         music_label.setStyleSheet(f"""
             color: #00ff00;
             font-size: 24px;
@@ -340,26 +345,79 @@ class SpaceInvadersMenu(QMainWindow):
         btn_back.clicked.connect(self.show_main_menu)
         options_layout.addWidget(btn_back, alignment=Qt.AlignmentFlag.AlignCenter)
 
+
+        if self.options_from_game and hasattr(self, "game_widget"):
+            self.game_widget.timer.stop()
+
         self.main_layout.addWidget(options_container)
 
+
+        if self.options_o_shortcut is None:
+            self.options_o_shortcut = QShortcut(QKeySequence("O"), self)
+            self.options_o_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+            self.options_o_shortcut.activated.connect(self._options_o_pressed)
+
+        self.options_o_shortcut.setEnabled(True)
+
+    def _options_o_pressed(self):
+
+        if self.current_screen == "options" and self.options_from_game:
+            self.return_to_game()
+
+    def return_to_game(self):
+
+        if self.options_o_shortcut is not None:
+            self.options_o_shortcut.setEnabled(False)
+
+        if not hasattr(self, "game_widget"):
+            self.show_main_menu()
+            return
+
+
+        self.clear_layout(keep_game_widget=True)
+        self.current_screen = "game"
+
+        self.main_layout.addWidget(self.game_widget)
+        self.game_widget.timer.start()
+        self.game_widget.setFocus()
+
     def update_sound_volume(self, value):
-        """Actualizează volumul sunetelor"""
         self.sound_volume = value
         self.sound_value_label.setText(f"{value}%")
         print(f"Sound volume: {value}%")
 
     def update_music_volume(self, value):
-        """Actualizează volumul muzicii"""
         self.music_volume = value
         self.music_value_label.setText(f"{value}%")
         print(f"Music volume: {value}%")
 
+        if hasattr(self, "audio_output") and self.audio_output is not None:
+            self.audio_output.setVolume(value / 100)
+
     def start_game(self):
-
-        self.clear_layout()
+        self.clear_layout(keep_game_widget=False)
         self.current_screen = "game"
+        self.options_from_game = False
 
-        game = GameWidget()
+        # dacă ai mai fost în options înainte, asigură-te că shortcut-ul e oprit în game
+        if self.options_o_shortcut is not None:
+            self.options_o_shortcut.setEnabled(False)
+
+        # ── MUSIC PLAYER ─────────────────────────
+        self.audio_output = QAudioOutput()
+        self.music_player = QMediaPlayer()
+        self.music_player.setAudioOutput(self.audio_output)
+
+        url = QUrl.fromLocalFile("assets/music/game_music.mp3")
+        self.music_player.setSource(url)
+
+        self.audio_output.setVolume(self.music_volume / 100)
+        self.music_player.setLoops(-1)
+        self.music_player.play()
+        # ─────────────────────────────────────────
+
+        game = GameWidget(open_options_callback=self.show_options)
+        self.game_widget = game
         self.main_layout.addWidget(game)
         game.setFocus()
 

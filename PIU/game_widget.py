@@ -4,9 +4,9 @@ from PyQt6.QtGui import QPainter, QColor
 
 
 class GameWidget(QWidget):
-    def __init__(self):
+    def __init__(self, open_options_callback=None):
         super().__init__()
-
+        self.open_options_callback = open_options_callback
 
         self.player_x = 400
         self.player_y = 550
@@ -158,6 +158,9 @@ class GameWidget(QWidget):
             self.keys_pressed["right"] = True
         elif event.key() == Qt.Key.Key_Space:
             self.keys_pressed["space"] = True
+        elif event.key() == Qt.Key.Key_O:
+            if self.open_options_callback:
+                self.open_options_callback("game")
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key.Key_Left:
