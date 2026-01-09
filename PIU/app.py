@@ -8,7 +8,6 @@ from PyQt6.QtGui import QFont, QFontDatabase, QShortcut, QKeySequence
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from pathlib import Path
 
-# Asigură-te că game_widget.py are modificările cu "semnal_game_over" discutate anterior!
 from game_widget import GameWidget
 
 
@@ -28,12 +27,11 @@ class SpaceInvadersMenu(QMainWindow):
         self.init_ui()
 
         self.music_player = None
-        # self.music_playlist = None # (Nu e folosit momentan)
 
         self.options_o_shortcut = None
 
     def setup_fonts(self):
-        # --- CODUL TĂU ORIGINAL PENTRU FONTURI ---
+
         jackpot_path = Path(r"D:\Downloads\master_droid\Master Droid.ttf")
         if jackpot_path.exists():
             jackpot_id = QFontDatabase.addApplicationFont(str(jackpot_path))
@@ -90,7 +88,7 @@ class SpaceInvadersMenu(QMainWindow):
                 continue
 
             if keep_game_widget and hasattr(self, "game_widget") and w is self.game_widget:
-                w.setParent(None)  # Îl scoatem temporar din layout, dar nu îl ștergem
+                w.setParent(None)
             else:
                 w.deleteLater()
 
@@ -213,7 +211,6 @@ class SpaceInvadersMenu(QMainWindow):
         settings_layout.setSpacing(20)
         settings_frame.setLayout(settings_layout)
 
-        # --- SOUND ---
         sound_label = QLabel("🔊 SOUND EFFECTS")
         sound_label.setStyleSheet(f"""
             color: #00ff00;
@@ -263,7 +260,6 @@ class SpaceInvadersMenu(QMainWindow):
         sound_slider_layout.addWidget(self.sound_value_label)
         settings_layout.addLayout(sound_slider_layout)
 
-        # --- MUSIC ---
         music_label = QLabel("MUSIC VOLUME")
         music_label.setStyleSheet(f"""
             color: #00ff00;
@@ -316,7 +312,6 @@ class SpaceInvadersMenu(QMainWindow):
         options_layout.addWidget(settings_frame)
         options_layout.addStretch()
 
-        # Buton back
         btn_back = QPushButton("← BACK TO MENU")
         btn_back.setStyleSheet(f"""
             QPushButton {{
@@ -372,17 +367,17 @@ class SpaceInvadersMenu(QMainWindow):
     def update_sound_volume(self, value):
         self.sound_volume = value
         self.sound_value_label.setText(f"{value}%")
-        # print(f"Sound volume: {value}%")
+
 
     def update_music_volume(self, value):
         self.music_volume = value
         self.music_value_label.setText(f"{value}%")
-        # print(f"Music volume: {value}%")
+
 
         if hasattr(self, "audio_output") and self.audio_output is not None:
             self.audio_output.setVolume(value / 100)
 
-    # --- MODIFICARE AICI: START GAME ---
+
     def start_game(self):
         self.clear_layout(keep_game_widget=False)
         self.current_screen = "game"
@@ -391,7 +386,7 @@ class SpaceInvadersMenu(QMainWindow):
         if self.options_o_shortcut is not None:
             self.options_o_shortcut.setEnabled(False)
 
-        # ── MUSIC PLAYER ─────────────────────────
+
         self.audio_output = QAudioOutput()
         self.music_player = QMediaPlayer()
         self.music_player.setAudioOutput(self.audio_output)
@@ -402,7 +397,7 @@ class SpaceInvadersMenu(QMainWindow):
         self.audio_output.setVolume(self.music_volume / 100)
         self.music_player.setLoops(-1)
         self.music_player.play()
-        # ─────────────────────────────────────────
+
 
         self.game_widget = GameWidget(
             open_options_callback=self.show_options,
