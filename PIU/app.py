@@ -3,11 +3,12 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QPushButton,
     QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider
 )
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtGui import QFont, QFontDatabase, QShortcut, QKeySequence
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from pathlib import Path
 
+# Asigură-te că game_widget.py are modificările cu "semnal_game_over" discutate anterior!
 from game_widget import GameWidget
 
 
@@ -18,7 +19,7 @@ class SpaceInvadersMenu(QMainWindow):
         self.open_options_callback = open_options_callback
 
         self.current_screen = "menu"
-        self.options_from_game = False  
+        self.options_from_game = False
 
         self.sound_volume = 50
         self.music_volume = 50
@@ -27,12 +28,12 @@ class SpaceInvadersMenu(QMainWindow):
         self.init_ui()
 
         self.music_player = None
-        self.music_playlist = None
-
+        # self.music_playlist = None # (Nu e folosit momentan)
 
         self.options_o_shortcut = None
 
     def setup_fonts(self):
+        # --- CODUL TĂU ORIGINAL PENTRU FONTURI ---
         jackpot_path = Path(r"D:\Downloads\master_droid\Master Droid.ttf")
         if jackpot_path.exists():
             jackpot_id = QFontDatabase.addApplicationFont(str(jackpot_path))
@@ -41,10 +42,8 @@ class SpaceInvadersMenu(QMainWindow):
                 self.jackpot_font_name = families[0]
                 print(f" Font Jackpot încărcat: {self.jackpot_font_name}")
             else:
-                print("Master Droid.ttf incarcat, dar nu s-au gasit familii — fallback la Courier New")
                 self.jackpot_font_name = "Courier New"
         else:
-            print(" Font Jackpot.ttf nu a fost găsit!")
             self.jackpot_font_name = "Courier New"
 
         arcade_path = Path(r"D:\Downloads\arcade_quest\Arcade Quest.ttf")
@@ -55,10 +54,8 @@ class SpaceInvadersMenu(QMainWindow):
                 self.retro_font_name = families[0]
                 print(f"Font Arcade Quest incarcat: {self.retro_font_name}")
             else:
-                print("⚠️ Arcade Quest.ttf incarcat, dar fara familii — fallback la Courier New")
                 self.retro_font_name = "Courier New"
         else:
-            print("❌ Font Arcade Quest.ttf nu a fost gasit!")
             self.retro_font_name = "Courier New"
 
     def init_ui(self):
@@ -85,7 +82,6 @@ class SpaceInvadersMenu(QMainWindow):
 
         self.show_main_menu()
 
-
     def clear_layout(self, keep_game_widget=False):
         while self.main_layout.count():
             child = self.main_layout.takeAt(0)
@@ -94,8 +90,7 @@ class SpaceInvadersMenu(QMainWindow):
                 continue
 
             if keep_game_widget and hasattr(self, "game_widget") and w is self.game_widget:
-
-                w.setParent(None)
+                w.setParent(None)  # Îl scoatem temporar din layout, dar nu îl ștergem
             else:
                 w.deleteLater()
 
@@ -182,9 +177,7 @@ class SpaceInvadersMenu(QMainWindow):
         self.main_layout.addWidget(menu_container)
 
     def show_options(self, source="menu"):
-
         self.options_from_game = (source == "game")
-
 
         self.clear_layout(keep_game_widget=self.options_from_game)
         self.current_screen = "options"
@@ -345,12 +338,10 @@ class SpaceInvadersMenu(QMainWindow):
         btn_back.clicked.connect(self.show_main_menu)
         options_layout.addWidget(btn_back, alignment=Qt.AlignmentFlag.AlignCenter)
 
-
         if self.options_from_game and hasattr(self, "game_widget"):
             self.game_widget.timer.stop()
 
         self.main_layout.addWidget(options_container)
-
 
         if self.options_o_shortcut is None:
             self.options_o_shortcut = QShortcut(QKeySequence("O"), self)
@@ -360,19 +351,16 @@ class SpaceInvadersMenu(QMainWindow):
         self.options_o_shortcut.setEnabled(True)
 
     def _options_o_pressed(self):
-
         if self.current_screen == "options" and self.options_from_game:
             self.return_to_game()
 
     def return_to_game(self):
-
         if self.options_o_shortcut is not None:
             self.options_o_shortcut.setEnabled(False)
 
         if not hasattr(self, "game_widget"):
             self.show_main_menu()
             return
-
 
         self.clear_layout(keep_game_widget=True)
         self.current_screen = "game"
@@ -384,22 +372,22 @@ class SpaceInvadersMenu(QMainWindow):
     def update_sound_volume(self, value):
         self.sound_volume = value
         self.sound_value_label.setText(f"{value}%")
-        print(f"Sound volume: {value}%")
+        # print(f"Sound volume: {value}%")
 
     def update_music_volume(self, value):
         self.music_volume = value
         self.music_value_label.setText(f"{value}%")
-        print(f"Music volume: {value}%")
+        # print(f"Music volume: {value}%")
 
         if hasattr(self, "audio_output") and self.audio_output is not None:
             self.audio_output.setVolume(value / 100)
 
+    # --- MODIFICARE AICI: START GAME ---
     def start_game(self):
         self.clear_layout(keep_game_widget=False)
         self.current_screen = "game"
         self.options_from_game = False
 
-        # dacă ai mai fost în options înainte, asigură-te că shortcut-ul e oprit în game
         if self.options_o_shortcut is not None:
             self.options_o_shortcut.setEnabled(False)
 
@@ -416,10 +404,13 @@ class SpaceInvadersMenu(QMainWindow):
         self.music_player.play()
         # ─────────────────────────────────────────
 
-        game = GameWidget(open_options_callback=self.show_options)
-        self.game_widget = game
-        self.main_layout.addWidget(game)
-        game.setFocus()
+        self.game_widget = GameWidget(
+            open_options_callback=self.show_options,
+            return_to_menu_callback=self.show_main_menu
+        )
+
+        self.main_layout.addWidget(self.game_widget)
+        QTimer.singleShot(0, self.game_widget.setFocus)
 
 
 def main():
